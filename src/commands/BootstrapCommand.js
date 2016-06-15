@@ -5,7 +5,10 @@ import Command from "../Command";
 import semver from "semver";
 import async from "async";
 import find from "lodash.find";
+import flatten from "lodash.flatten";
 import path from "path";
+import glob from "glob";
+import symlink from "fs-symlink";
 
 export default class BootstrapCommand extends Command {
   initialize(callback) {
@@ -76,22 +79,56 @@ export default class BootstrapCommand extends Command {
     const srcPackageJsonLocation = path.join(src, "package.json");
     const destPackageJsonLocation = path.join(dest, "package.json");
     const destIndexJsLocation = path.join(dest, "index.js");
+    const pkg = require(srcPackageJsonLocation)
+    const prefix = this.repository.linkedFiles.prefix || "";
+
+    const linkFiles = (pkg.lerna && pkg.lerna.files) || []
+    linkFiles.push(pkg.main)
 
     const packageJsonFileContents = JSON.stringify({
       name: name,
-      version: require(srcPackageJsonLocation).version
+      version: pkg.version
     }, null, "  ");
 
-    const prefix = this.repository.linkedFiles.prefix || "";
-    const indexJsFileContents = prefix + "module.exports = require(" + JSON.stringify(src) + ");";
+    async.parallel([
+      cb => {
+        async.waterfall([
+          cb => async.map(linkFiles, (file, cb) => glob(file, { cwd: src }, cb), cb),
+          (files, cb) => {
+            files = flatten(files)
 
-    FileSystemUtilities.writeFile(destPackageJsonLocation, packageJsonFileContents, err => {
-      if (err) {
-        return callback(err);
+            async.each(files, (file, cb) => {
+              const dir = path.dirname(path.join(dest, file))
+
+              async.series([
+                cb => {
+                  FileSystemUtilities.mkdirp(dir, cb)
+                },
+                cb => {
+                  if (path.extname(file) === '.js') {
+                    const fileContent = prefix + "module.exports = require(" + JSON.stringify(path.join(src, file)) + ");";
+                    FileSystemUtilities.writeFile(path.join(dest, file), fileContent, cb);
+                  } else {
+                    symlink(path.join(src, file), path.join(dest, file))
+                      .then(() => cb())
+                      .catch(err => {
+                        if (err.code === 'EEXIST') {
+                          cb()
+                        } else {
+                          cb(err)
+                        }
+                      })
+                  }
+                }
+              ], cb)
+            }, cb);
+          }
+        ], cb)
+      },
+      cb => {
+        FileSystemUtilities.writeFile(destPackageJsonLocation, packageJsonFileContents, cb);
       }
-
-      FileSystemUtilities.writeFile(destIndexJsLocation, indexJsFileContents, callback);
-    });
+    ], callback);
   }
 
   installExternalPackages(pkg, callback) {
