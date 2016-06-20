@@ -39,8 +39,18 @@ export default class NpmUtilities {
   }
 
   @logger.logifyAsync
-  static runScriptInDir(script, args, directory, callback) {
-    NpmUtilities.execInDir(`run ${script}`, args, directory, callback);
+  static runScriptInDir(script, args, directory, options, callback) {
+    if (typeof options === 'function') {
+      callback = options
+    }
+
+    args = ["run", script].concat(args);
+    const opts = Object.assign({
+      cwd: directory,
+      stdio: "ignore"
+    }, options)
+
+    ChildProcessUtilities.spawn("npm", args, opts, callback);
   }
 
   @logger.logifyAsync

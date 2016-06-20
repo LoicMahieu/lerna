@@ -41,13 +41,34 @@ describe("RunCommand", () => {
     runCommand.runPreparations();
 
     const ranInPackages = [];
-    stub(ChildProcessUtilities, "exec", (command, options, callback) => {
+    stub(ChildProcessUtilities, "spawn", (command, args, options, callback) => {
       ranInPackages.push(options.cwd.substr(path.join(testDir, "packages/").length));
       callback();
     });
 
     runCommand.runCommand(exitWithCode(0, () => {
       assert.deepEqual(ranInPackages, ["package-1"]);
+      done();
+    }));
+  });
+
+  it("should run a command with a given stdio", done => {
+    const runCommand = new RunCommand(["my-script"], {stdio: "inherit"});
+
+    runCommand.runValidations();
+    runCommand.runPreparations();
+
+    const stdios = [];
+    stub(ChildProcessUtilities, "spawn", (command, args, options, callback) => {
+      stdios.push([options.stdio, args]);
+      callback();
+    });
+
+    runCommand.runCommand(exitWithCode(0, () => {
+      assert.deepEqual(stdios, [
+        ["inherit", ["run", "my-script"]],
+        ["inherit", ["run", "my-script"]]
+      ]);
       done();
     }));
   });
