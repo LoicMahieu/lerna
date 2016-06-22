@@ -47,7 +47,8 @@ export default class NpmUtilities {
     args = ["run", script].concat(args);
     const opts = Object.assign({
       cwd: directory,
-      stdio: "ignore"
+      stdio: "ignore",
+      env: process.env
     }, options)
 
     ChildProcessUtilities.spawn("npm", args, opts, callback);
