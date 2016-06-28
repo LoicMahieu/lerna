@@ -128,6 +128,31 @@ describe("UpdatedCommand", () => {
 
       updatedCommand.runCommand(exitWithCode(0, done));
     });
+
+    it("should list changes for explicitly changed packages", done => {
+      execSync("git tag v1.0.0");
+      execSync("touch " + path.join(testDir, "packages/package-2/random-file"));
+      execSync("git add -A");
+      execSync("git commit -m 'Commit'");
+
+      const updatedCommand = new UpdatedCommand([], {
+        onlyExplicitUpdates: true
+      });
+
+      updatedCommand.runValidations();
+      updatedCommand.runPreparations();
+
+      let calls = 0;
+      stub(logger, "info", message => {
+        if (calls === 0) assert.equal(message, "Checking for updated packages...");
+        if (calls === 1) assert.equal(message, "");
+        if (calls === 2) assert.equal(message, "- package-2");
+        if (calls === 3) assert.equal(message, "");
+        calls++;
+      });
+
+      updatedCommand.runCommand(exitWithCode(0, done));
+    });
   });
 
   /** =========================================================================

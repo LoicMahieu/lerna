@@ -20,7 +20,7 @@ repositories is *messy* and difficult to track, and testing across repositories
 gets complicated really fast.
 
 To solve these (and many other) problems, some projects will organize their
-codebases into multi-package repostories (sometimes called [monorepos](https://github.com/babel/babel/blob/master/doc/design/monorepo.md)). Projects like [Babel](https://github.com/babel/babel/tree/master/packages), [React](https://github.com/facebook/react/tree/master/packages), [Angular](https://github.com/angular/angular/tree/master/modules),
+codebases into multi-package repositories (sometimes called [monorepos](https://github.com/babel/babel/blob/master/doc/design/monorepo.md)). Projects like [Babel](https://github.com/babel/babel/tree/master/packages), [React](https://github.com/facebook/react/tree/master/packages), [Angular](https://github.com/angular/angular/tree/master/modules),
 [Ember](https://github.com/emberjs/ember.js/tree/master/packages), [Meteor](https://github.com/meteor/meteor/tree/devel/packages), [Jest](https://github.com/facebook/jest/tree/master/packages), and many others develop all of their packages within a
 single repository.
 
@@ -384,6 +384,21 @@ $ lerna exec --scope my-component -- ls -la
 $ lerna exec --concurrency 1 -- ls -la
 ```
 
+### import
+
+```sh
+$ lerna import <path-to-external-repository>
+```
+
+Import the package at `<path-to-external-repository>`, with commit history,
+into `packages/<directory-name>`.  Original commit authors, dates and messages
+are preserved.  Commits are applied to the current branch.
+
+This is useful for gathering pre-existing standalone packages into a Lerna
+repo.  Each commit is modified to make changes relative to the package
+directory.  So, for example, the commit that added `package.json` will
+instead add `packages/<directory-name>/package.json`.
+
 ## Misc
 
 Lerna will log to a `lerna-debug.log` file (same as `npm-debug.log`) when it encounters an error running a command.
@@ -461,3 +476,16 @@ The `ignore` flag, when used with the `bootstrap` command, can also be set in `l
 
 > Hint: The glob is matched against the package name defined in `package.json`,
 > not the directory name the package lives in.
+
+#### --only-explicit-updates
+
+Only will bump versions for packages that have been updated explicitly rather than cross-dependencies.
+
+> This may not make sense for a major version bump since other packages that depend on the updated packages wouldn't be updated.
+
+```sh
+$ lerna updated --only-explicit-updates
+$ lerna publish --only-explicit-updates
+```
+
+Ex: in Babel, `babel-types` is depended upon by all packages in the monorepo (over 100). However, Babel uses `^` for most of it's dependencies so it isn't necessary to bump the versions of all packages if only `babel-types` is updated. This option allows only the packages that have been explicitly updated to make a new version.

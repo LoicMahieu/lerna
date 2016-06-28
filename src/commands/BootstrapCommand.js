@@ -87,7 +87,8 @@ export default class BootstrapCommand extends Command {
 
     const packageJsonFileContents = JSON.stringify({
       name: name,
-      version: pkg.version
+      version: pkg.version,
+      main: pkg.main
     }, null, "  ");
 
     async.parallel([
